@@ -1,0 +1,15 @@
+table_set_default MyIngress.routing_table NoAction
+table_set_default MyEgress.switching_table NoAction
+table_set_default MyEgress.mac_rewriting_table NoAction
+
+table_add MyIngress.routing_table ipv4_forward 192.168.1.0/24 => 192.168.101.1   3
+table_add MyIngress.routing_table ipv4_forward 192.168.2.0/24 => 192.168.102.2   2
+table_add MyIngress.routing_table ipv4_forward 192.168.3.0/24 => 192.168.3.2     1
+
+table_add MyEgress.switching_table set_destmac 192.168.101.1 => 00:00:00:00:01:03
+table_add MyEgress.switching_table set_destmac 192.168.102.2 => 00:00:00:00:02:03
+table_add MyEgress.switching_table set_destmac 192.168.3.2   => 00:00:00:00:00:03
+
+table_add MyEgress.mac_rewriting_table set_sourcemac 1 => 00:00:00:00:03:01
+table_add MyEgress.mac_rewriting_table set_sourcemac 2 => 00:00:00:00:03:03
+table_add MyEgress.mac_rewriting_table set_sourcemac 3 => 00:00:00:00:03:02
