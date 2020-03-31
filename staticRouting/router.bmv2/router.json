@@ -176,7 +176,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "router.p4",
-        "line" : 189,
+        "line" : 180,
         "column" : 8,
         "source_fragment" : "MyDeparser"
       },
@@ -193,7 +193,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "router.p4",
-        "line" : 204,
+        "line" : 196,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },
@@ -269,8 +269,8 @@
           ],
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 96,
-            "column" : 8,
+            "line" : 90,
+            "column" : 4,
             "source_fragment" : "mark_to_drop(standard_metadata)"
           }
         }
@@ -304,7 +304,7 @@
           ],
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 100,
+            "line" : 94,
             "column" : 8,
             "source_fragment" : "meta.routing.nhop_ipv4 = nextHop"
           }
@@ -323,7 +323,7 @@
           ],
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 101,
+            "line" : 95,
             "column" : 8,
             "source_fragment" : "standard_metadata.egress_spec = port"
           }
@@ -365,7 +365,7 @@
           ],
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 102,
+            "line" : 96,
             "column" : 8,
             "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
           }
@@ -399,8 +399,8 @@
           ],
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 137,
-            "column" : 8,
+            "line" : 128,
+            "column" : 4,
             "source_fragment" : "mark_to_drop(standard_metadata)"
           }
         }
@@ -421,15 +421,15 @@
           ],
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 137,
-            "column" : 8,
+            "line" : 128,
+            "column" : 4,
             "source_fragment" : "mark_to_drop(standard_metadata)"
           }
         }
       ]
     },
     {
-      "name" : "MyEgress.set_destmac",
+      "name" : "MyEgress.set_dmac",
       "id" : 7,
       "runtime_data" : [
         {
@@ -452,7 +452,7 @@
           ],
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 141,
+            "line" : 132,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
           }
@@ -460,7 +460,7 @@
       ]
     },
     {
-      "name" : "MyEgress.set_sourcemac",
+      "name" : "MyEgress.set_smac",
       "id" : 8,
       "runtime_data" : [
         {
@@ -483,7 +483,7 @@
           ],
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 145,
+            "line" : 136,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.srcAddr = mac"
           }
@@ -497,18 +497,18 @@
       "id" : 0,
       "source_info" : {
         "filename" : "router.p4",
-        "line" : 91,
+        "line" : 85,
         "column" : 8,
         "source_fragment" : "MyIngress"
       },
-      "init_table" : "node_2",
+      "init_table" : "MyIngress.routing_table",
       "tables" : [
         {
           "name" : "MyIngress.routing_table",
           "id" : 0,
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 105,
+            "line" : 99,
             "column" : 10,
             "source_fragment" : "routing_table"
           },
@@ -543,38 +543,14 @@
         }
       ],
       "action_profiles" : [],
-      "conditionals" : [
-        {
-          "name" : "node_2",
-          "id" : 0,
-          "source_info" : {
-            "filename" : "router.p4",
-            "line" : 119,
-            "column" : 12,
-            "source_fragment" : "hdr.ipv4.isValid()"
-          },
-          "expression" : {
-            "type" : "expression",
-            "value" : {
-              "op" : "d2b",
-              "left" : null,
-              "right" : {
-                "type" : "field",
-                "value" : ["ipv4", "$valid$"]
-              }
-            }
-          },
-          "false_next" : null,
-          "true_next" : "MyIngress.routing_table"
-        }
-      ]
+      "conditionals" : []
     },
     {
       "name" : "egress",
       "id" : 1,
       "source_info" : {
         "filename" : "router.p4",
-        "line" : 132,
+        "line" : 123,
         "column" : 8,
         "source_fragment" : "MyEgress"
       },
@@ -585,7 +561,7 @@
           "id" : 1,
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 148,
+            "line" : 139,
             "column" : 10,
             "source_fragment" : "switching_table"
           },
@@ -604,10 +580,10 @@
           "support_timeout" : false,
           "direct_meters" : null,
           "action_ids" : [7, 5, 3],
-          "actions" : ["MyEgress.set_destmac", "MyEgress.drop", "NoAction"],
+          "actions" : ["MyEgress.set_dmac", "MyEgress.drop", "NoAction"],
           "base_default_next" : "MyEgress.mac_rewriting_table",
           "next_tables" : {
-            "MyEgress.set_destmac" : "MyEgress.mac_rewriting_table",
+            "MyEgress.set_dmac" : "MyEgress.mac_rewriting_table",
             "MyEgress.drop" : "MyEgress.mac_rewriting_table",
             "NoAction" : "MyEgress.mac_rewriting_table"
           },
@@ -623,7 +599,7 @@
           "id" : 2,
           "source_info" : {
             "filename" : "router.p4",
-            "line" : 160,
+            "line" : 151,
             "column" : 10,
             "source_fragment" : "mac_rewriting_table"
           },
@@ -642,10 +618,10 @@
           "support_timeout" : false,
           "direct_meters" : null,
           "action_ids" : [8, 6, 4],
-          "actions" : ["MyEgress.set_sourcemac", "MyEgress.drop", "NoAction"],
+          "actions" : ["MyEgress.set_smac", "MyEgress.drop", "NoAction"],
           "base_default_next" : null,
           "next_tables" : {
-            "MyEgress.set_sourcemac" : null,
+            "MyEgress.set_smac" : null,
             "MyEgress.drop" : null,
             "NoAction" : null
           },
@@ -667,7 +643,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "router.p4",
-        "line" : 204,
+        "line" : 196,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },
@@ -729,7 +705,7 @@
       ["standard_metadata", "priority"]
     ]
   ],
-  "program" : "router.bvm2/router.p4i",
+  "program" : "router.bmv2/router.p4i",
   "__meta__" : {
     "version" : [2, 18],
     "compiler" : "https://github.com/p4lang/p4c"

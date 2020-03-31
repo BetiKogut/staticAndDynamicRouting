@@ -2,7 +2,7 @@
 #include <core.p4>
 #include <v1model.p4>
 
-const bit<16> TYPE_IPV4 = 0x800;
+const bit<16> TYPE_IPV4 = 0x0800;
 
 /*---------------------------------------/
 /----------------HEADERS----------------/
@@ -33,6 +33,10 @@ header ipv4_t {
     ip4Addr_t dstAddr;
 }
 
+struct headers {
+    ethernet_t   ethernet;
+    ipv4_t       ipv4;
+}
 
 struct routing_metadata_t {
     ip4Addr_t nhop_ipv4;
@@ -42,10 +46,7 @@ struct metadata {
     routing_metadata_t routing;
 }
 
-struct headers {
-    ethernet_t   ethernet;
-    ipv4_t       ipv4;
-}
+
 
 /*--------------------------------------/
 /----------------PARSER----------------/
@@ -75,13 +76,6 @@ parser MyParser(packet_in packet,
 
 }
 
-/*-------------------------------------------/
-/-----------CHECKSUM VERIFICATION-----------/
-/-------------------------------------------*/
-
-control MyVerifyChecksum(inout headers hdr, inout metadata meta) {   
-    apply {  }
-}
 
 
 /*-------------------------------------------/
@@ -92,9 +86,9 @@ control MyIngress(inout headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata){
 
-    action drop() {
-        mark_to_drop(standard_metadata);
-        }
+action drop() {
+    mark_to_drop(standard_metadata);
+}
 
     action ipv4_forward(ip4Addr_t nextHop, egressSpec_t port) {
         meta.routing.nhop_ipv4 = nextHop;
@@ -130,15 +124,15 @@ control MyEgress(inout headers hdr,
                inout metadata meta,
                inout standard_metadata_t standard_metadata){
 
-    action drop() {
-        mark_to_drop(standard_metadata);
-    }
+action drop() {
+    mark_to_drop(standard_metadata);
+}
 
-    action set_destmac(macAddr_t dstAddr) {
+    action set_dmac(macAddr_t dstAddr) {
         hdr.ethernet.dstAddr = dstAddr;
     }
 
-    action set_sourcemac(macAddr_t mac) {
+    action set_smac(macAddr_t mac) {
         hdr.ethernet.srcAddr = mac;
     }
 
@@ -147,7 +141,7 @@ control MyEgress(inout headers hdr,
             meta.routing.nhop_ipv4 : exact;
         }
         actions = {
-            set_destmac;
+            set_dmac;
             drop;
             NoAction;
         }
@@ -161,7 +155,7 @@ control MyEgress(inout headers hdr,
         }
 
         actions = {
-            set_sourcemac;
+            set_smac;
             drop;
             NoAction;
         }
@@ -183,7 +177,8 @@ control MyEgress(inout headers hdr,
 /-----------------DEPARSER-------------------/
 /--------------------------------------------*/
 
-control MyDeparser(packet_out packet, in headers hdr) {
+control MyDeparser(packet_out packet, 
+                   in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
@@ -216,6 +211,14 @@ control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
     }
 }
 
+
+/*-------------------------------------------/
+/-----------CHECKSUM VERIFICATION-----------/
+/-------------------------------------------*/
+
+control MyVerifyChecksum(inout headers hdr, inout metadata meta) {   
+    apply {  }
+}
 
 /*--------------------------------------------/
 /-------------------SWITCH-------------------/
