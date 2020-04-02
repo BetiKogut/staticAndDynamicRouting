@@ -1,20 +1,17 @@
-###Static Routing
+# Static Routing
 
-Compile:
+#### Compile:
 
-  p4c -b bmv2 router.p4 -o router.bvm2
+ `p4c -b bmv2 router.p4 -o router.bvm2`
 
+#### Run:
 
-Run:
+ `sudo python topology.py --behavioral-exe simple_switch --json router.bmv2/router.json`
 
-  sudo python topology.py --behavioral-exe simple_switch --json router.bmv2/router.json
+#### Install routing and switching tables:
 
+ `./install_flow_rules.sh`
 
-Install routing and switching tables:
-
-  ./install_flow_rules.sh
-
-
-Topology:
+#### Topology:
 
  ![](routing_topo.jpg)
