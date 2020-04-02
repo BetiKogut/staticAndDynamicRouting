@@ -84,7 +84,7 @@ def main():
     s3 = net.get('s3')
     s3.setIP('192.168.3.1/24', intf='s3-eth1')
     s3.setMAC('00:00:00:00:03:01', intf='s3-eth1')
-    s3.setIP('192.168.102.3', intf='s3-eth2')
+    s3.setIP('192.168.102.3/24', intf='s3-eth2')
     s3.setMAC('00:00:00:00:03:02', intf='s3-eth2')
     s3.setIP('192.168.101.3/24', intf='s3-eth3')
     s3.setMAC('00:00:00:00:03:03', intf='s3-eth3')
