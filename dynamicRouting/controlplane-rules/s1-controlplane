@@ -1,0 +1,9 @@
+table_set_default MyIngress.cp_routing_table NoAction
+table_set_default MyEgress.cp_switching_table NoAction
+table_set_default MyEgress.cp_mac_rewriting_table NoAction
+
+table_add MyIngress.cp_routing_table ipv4_forward 0.0.0.0/24 => 192.168.101.1    1
+
+table_add MyEgress.cp_switching_table set_dmac 192.168.101.1 => 00:00:00:01:00:00
+
+table_add MyEgress.cp_mac_rewriting_table set_smac 1 => 00:00:00:00:01:04

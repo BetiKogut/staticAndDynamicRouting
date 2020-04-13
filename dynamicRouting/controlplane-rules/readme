@@ -1,0 +1,3 @@
+These files contains simple rules for forwardig packets to mininet controllers.
+They are used if incoming packet has ipv4.protocol = OSPF.
+They should be uploaded using bash script ==> ../install_cp_rules.sh  
