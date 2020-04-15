@@ -74,5 +74,8 @@ Sieć testowa zostanie zestawiona za pomocą środowiska *Mininet*. Routery dzia
 
 Każdy switch ma przypisany swój obiekt typu Controller z wydzielonym adresem IP. Każdy switch ma utworzony specjalny interfejs `sX-eth4`. Controller oraz wspomniany interfejs są ze sobą połączone. 
 
-![routing_topo_large](.\routing_topo_large.jpg)
+![routing_topo_large](routing_topo_large.jpg)
+
+
+
 
