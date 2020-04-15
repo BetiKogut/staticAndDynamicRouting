@@ -84,10 +84,13 @@ def main():
     c4 = Controller('c4', ip = "192.168.104.1/24", mac= '00:00:00:04:00:00', port = 6634)
     c5 = Controller('c5', ip = "192.168.105.1/24", mac= '00:00:00:05:00:00', port = 6635)
 
+    #print("c1 ip = ", c1.ip())
     #add newly created controlers to net (Mininet object, not Topo(!))
     for c in [c1, c2, c3, c4, c5]:
         net.addController(c)
         c.start()
+
+    #print("c1 ip = ", c1.ip())
 
     #...
     s1 = net.get('s1')
@@ -102,6 +105,7 @@ def main():
     net.addLink(s3, c3, port1 = 4)
     net.addLink(s4, c4, port1 = 4)
     net.addLink(s5, c5, port1 = 4)
+    #print("c1 ip = ", c1.ip())
 
     #start switches with controllers
     s1.start([c1])
@@ -183,6 +187,7 @@ def main():
     h5.setDefaultRoute("dev h5-eth0 via 192.168.5.1")
 
     print "Ready !"
+    print("c1 ip = ", c1.ip())
     CLI(net)
     net.stop()
 

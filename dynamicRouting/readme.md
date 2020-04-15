@@ -59,9 +59,9 @@ table_add MyEgress.cp_mac_rewriting_table set_smac 1 => 00:00:00:00:02:04
 
 Są one aplikowane do switcha z użyciem `simple_switch_CLI` i specyficznego `thrift-port'u`.
 
-//TODO: Zakładamy utworzenie dwóch plików python: send.py oraz receive.py, w których wykorzystywana jest biblioteka Scapy. 
+Na potrzeby komunikacji pomiędzy obiektami Switch i Controller został utworzony na każdym Switch'u dodatkowy port (`sX-eth4`). Do obiektu Controller został przypisany adres IP oraz MAC na etapie wywoływania jego konstruktora. Controller oraz Switch zostały połączone obiektem typu Link. 
 
-## Warstwa sterowania
+## Warstwa sterowania #w budowie
 
 - Warstwa sterowania zostanie zaimplementowana przy użyciu języka Python.
 - Program po otrzymaniu pakietów Hello od sąsiadów buduję bazę danych. Baza danych jest przetrzymywana w obiekcie typu słownik. 
