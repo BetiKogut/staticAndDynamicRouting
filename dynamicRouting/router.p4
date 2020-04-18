@@ -3,7 +3,7 @@
 #include <v1model.p4>
 
 const bit<16> TYPE_IPV4 = 0x0800;
-const bit<8> TYPE_OSPF = 0x59;
+const bit<8> TYPE_OSPF = 0x0059;
 
 /*---------------------------------------/
 /----------------HEADERS----------------/

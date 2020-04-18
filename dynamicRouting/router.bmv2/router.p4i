@@ -72,6 +72,7 @@ extern packet_out {
 extern void verify(in bool check, in error toSignal);
 
 /// Built-in action that does nothing.
+@noWarn("unused")
 action NoAction() {}
 
 /// Standard match kinds for table key fields.
@@ -158,6 +159,10 @@ limitations under the License.
 /* This is the P4-16 core library, which declares some built-in P4 constructs using P4 */
 # 53 "/usr/local/share/p4c/p4include/v1model.p4" 2
 
+
+
+
+
 match_kind {
     range,
     // Either an exact match, or a wildcard (matching any value).
@@ -166,11 +171,21 @@ match_kind {
     selector
 }
 
+
+
+
+
 @metadata @name("standard_metadata")
 struct standard_metadata_t {
+
+
+
+
+
     bit<9> ingress_port;
     bit<9> egress_spec;
     bit<9> egress_port;
+
     bit<32> instance_type;
     bit<32> packet_length;
     //
@@ -224,7 +239,11 @@ enum MeterType {
     bytes
 }
 
-extern counter {
+extern counter
+
+
+
+{
     /***
      * A counter object is created by calling its constructor.  This
      * creates an array of counter states, with the number of counter
@@ -241,6 +260,8 @@ extern counter {
      * register.
      */
     counter(bit<32> size, CounterType type);
+    // FIXME -- size arg should be `int` but that breaks typechecking
+
     /***
      * count() causes the counter state with the specified index to be
      * read, modified, and written back, atomically relative to the
@@ -253,7 +274,11 @@ extern counter {
      *              size-1].  If index >= size, no counter state will be
      *              updated.
      */
+
+
+
     void count(in bit<32> index);
+
 }
 
 extern direct_counter {
@@ -292,7 +317,11 @@ extern direct_counter {
 
 
 
-extern meter {
+extern meter
+
+
+
+{
     /***
      * A meter object is created by calling its constructor.  This
      * creates an array of meter states, with the number of meter
@@ -308,6 +337,8 @@ extern meter {
      * packets contain (MeterType.bytes).
      */
     meter(bit<32> size, MeterType type);
+    // FIXME -- size arg should be `int` but that breaks typechecking
+
     /***
      * execute_meter() causes the meter state with the specified index
      * to be read, modified, and written back, atomically relative to
@@ -327,7 +358,11 @@ extern meter {
      *              range, the final value of result is not specified,
      *              and should be ignored by the caller.
      */
+
+
+
     void execute_meter<T>(in bit<32> index, out T result);
+
 }
 
 extern direct_meter<T> {
@@ -366,7 +401,12 @@ extern direct_meter<T> {
     void read(out T result);
 }
 
-extern register<T> {
+
+
+
+extern register<T>
+
+{
     /***
      * A register object is created by calling its constructor.  This
      * creates an array of 'size' identical elements, each with type
@@ -377,7 +417,7 @@ extern register<T> {
      *
      * allocates storage for 512 values, each with type bit<32>.
      */
-    register(bit<32> size);
+    register(bit<32> size); // FIXME -- arg should be `int` but that breaks typechecking
     /***
      * read() reads the state of the register array stored at the
      * specified index, and returns it as the value written to the
@@ -392,7 +432,12 @@ extern register<T> {
      *              value of result is not specified, and should be
      *              ignored by the caller.
      */
+    @noSideEffects
+
+
+
     void read(out T result, in bit<32> index);
+
     /***
      * write() writes the state of the register array at the specified
      * index, with the value provided by the value parameter.
@@ -415,7 +460,11 @@ extern register<T> {
      *              parameter's value is written into the register
      *              array element specified by index.
      */
+
+
+
     void write(in bit<32> index, in T value);
+
 }
 
 // used as table implementation attribute
@@ -488,6 +537,7 @@ extern void mark_to_drop();
  * of the different possible things that can happen to a packet when
  * ingress and egress processing are complete.
  */
+@pure
 extern void mark_to_drop(inout standard_metadata_t standard_metadata);
 
 /***
@@ -505,6 +555,7 @@ extern void mark_to_drop(inout standard_metadata_t standard_metadata);
  * @param T          Must be a type bit<W>
  * @param M          Must be a type bit<W>
  */
+@pure
 extern void hash<O, T, D, M>(out O result, in HashAlgorithm algo, in T base, in D data, in M max);
 
 extern action_selector {
@@ -565,6 +616,7 @@ extern void verify_checksum<T, O>(in bool condition, in T data, in O checksum, H
  *                   may be supported).  Must be a compile-time
  *                   constant.
  */
+@pure
 extern void update_checksum<T, O>(in bool condition, in T data, inout O checksum, HashAlgorithm algo);
 
 /***
@@ -587,6 +639,7 @@ extern void verify_checksum_with_payload<T, O>(in bool condition, in T data, in 
  * Calling update_checksum_with_payload is only supported in the
  * ComputeChecksum control.
  */
+@noSideEffects
 extern void update_checksum_with_payload<T, O>(in bool condition, in T data, inout O checksum, HashAlgorithm algo);
 
 /***
@@ -810,10 +863,12 @@ package V1Switch<H, M>(Parser<H, M> p,
                        ComputeChecksum<H, M> ck,
                        Deparser<H> dep
                        );
+
+const bit<32> __v1model_version = 20180101;
 # 4 "router.p4" 2
 
 const bit<16> TYPE_IPV4 = 0x0800;
-const bit<8> TYPE_OSPF = 0x59;
+const bit<8> TYPE_OSPF = 0x0059;
 
 /*---------------------------------------/
 /----------------HEADERS----------------/
