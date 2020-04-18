@@ -83,7 +83,6 @@ parser MyParser(packet_in packet,
         meta.isOSPF = true;
         transition accept;
     }
-
 }
 
 
@@ -106,12 +105,17 @@ control MyIngress(inout headers hdr,
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
-    table cp_routing_table {
+    action to_port_forward(bit<9> port){
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        standard_metadata.egress_spec = port;
+    }
+
+    table cp_forward_table {
         key = {
             hdr.ipv4.dstAddr: lpm;
         }
         actions = {
-            ipv4_forward;
+            to_port_forward;
             drop;
             NoAction;
         }
@@ -132,7 +136,7 @@ control MyIngress(inout headers hdr,
 
     apply {
             if (meta.isOSPF==true){
-                cp_routing_table.apply();
+                cp_forward_table.apply();
             }
             else{
                 routing_table.apply();
@@ -161,33 +165,6 @@ control MyEgress(inout headers hdr,
 
     action set_smac(macAddr_t mac) {
         hdr.ethernet.srcAddr = mac;
-    }
-
-    table cp_switching_table {
-        key = {
-            meta.routing.nhop_ipv4 : exact;
-        }
-        actions = {
-            set_dmac;
-            drop;
-            NoAction;
-        }
-        default_action = NoAction();
-    }
-
-    table cp_mac_rewriting_table {
-
-        key = {
-            standard_metadata.egress_port: exact;
-        }
-
-        actions = {
-            set_smac;
-            drop;
-            NoAction;
-        }
-
-        default_action = drop();
     }
 
     table switching_table {
@@ -219,8 +196,6 @@ control MyEgress(inout headers hdr,
 
     apply {
             if (meta.isOSPF==true){
-                cp_switching_table.apply();
-                cp_mac_rewriting_table.apply();
             }
             else{
                 switching_table.apply();
