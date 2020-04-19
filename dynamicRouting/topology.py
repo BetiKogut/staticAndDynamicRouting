@@ -187,7 +187,7 @@ def main():
     h5.setDefaultRoute("dev h5-eth0 via 192.168.5.1")
 
     print "Ready !"
-    print("c1 ip = ", c1.ip())
+   # print("c1 ip = ", c1.ip())
     CLI(net)
     net.stop()
 
