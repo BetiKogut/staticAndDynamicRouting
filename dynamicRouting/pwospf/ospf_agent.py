@@ -18,12 +18,13 @@ ALLSPFRouters = "224.0.0.5"
 ### --------- DEFINITIONS --------- ###
 ###---------------------------------###
 class OspfInterface:
-    def __init__(self, ip_address, mask, helloint, neighbour_ip, neighbour_id):
+    def __init__(self, ip_address, mask = "24", helloint = 10, neighbour_ip = "0", neighbour_id = "0"):
         self.ip_address = ip_address
         self.mask = mask
         self.helloint = helloint
         self.neighbour_ip = neighbour_ip
         self.neighbour_id = neighbour_id
+
 
 def generate_hello(**hello_param):
     p = scapy_ospf.Ether()/IP()/scapy_ospf.OSPF_Hdr()/scapy_ospf.OSPF_Hello()
@@ -42,10 +43,6 @@ OSPF_Interfaces = []
 
 for interface in ROUTER_INTERFACES:
     OSPF_Interfaces.append(OspfInterface(
-        interface["address"],
-        interface["mask"],
-        HELLOINT,
-        "0",
-        "0"
-    ))
-
+        ip_address = interface["address"],
+        mask = interface["mask"],
+        helloint = HELLOINT))

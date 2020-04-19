@@ -1,2 +1,4 @@
 table_set_default MyIngress.cp_forward_table NoAction
 table_add MyIngress.cp_forward_table to_port_forward 0.0.0.0/0 => 4
+table_set_default MyIngress.cp_inbound_table NoAction
+table_add MyIngress.cp_inbound_table mark_packet_cp 4 4

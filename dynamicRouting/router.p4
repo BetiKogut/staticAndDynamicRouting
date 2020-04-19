@@ -46,6 +46,7 @@ struct routing_metadata_t {
 struct metadata {
     routing_metadata_t routing;
     bool isOSPF;
+    bool is_from_CP;
 }
 
 
@@ -60,6 +61,8 @@ parser MyParser(packet_in packet,
                 inout standard_metadata_t standard_metadata) {
 
     state start {
+        meta.isOSPF = false;
+        meta.is_from_CP = false;
         transition parse_ethernet;
     }
 
@@ -110,6 +113,22 @@ control MyIngress(inout headers hdr,
         standard_metadata.egress_spec = port;
     }
 
+    action mark_packet_cp(){
+        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        meta.is_from_CP = true;
+    }
+
+    table cp_inbound_table {
+        key = {
+            standard_metadata.ingress_port: exact;
+        }
+        actions = {
+            mark_packet_cp;
+            NoAction;
+        }
+        default_action = NoAction();
+    }
+
     table cp_forward_table {
         key = {
             hdr.ipv4.dstAddr: lpm;
@@ -135,7 +154,9 @@ control MyIngress(inout headers hdr,
     }
 
     apply {
-            if (meta.isOSPF==true){
+            cp_inbound_table.apply();
+
+            if (meta.isOSPF==true && meta.is_from_CP==false){
                 cp_forward_table.apply();
             }
             else{
