@@ -2,6 +2,7 @@ import sys
 from scapy.all import *
 import scapy_ospf
 import threading
+import time
 
 ###---------------------------------###
 ### --------- CONFIG DATA --------- ###
@@ -31,13 +32,6 @@ class OspfInterface:
         self.neighbour_ip = neighbour_ip
         self.neighbour_id = neighbour_ip
 
-# class OspfSniffer(threading.Thread):
-#     def __init__(self, sniffed_packets):
-#         threading.Thread.__init__(self)
-#         self.sniffed_packets = sniffed_packets
-#     def run(self):
-#         sniffed_packets = sniff(iface = ROUTER_CP_INTERFACE.get("name"))
-
 class OspfHelloThread(threading.Thread):
     def __init__(self,*args, **kwargs):
         super(OspfHelloThread, self).__init__(*args, **kwargs)
@@ -46,21 +40,36 @@ class OspfHelloThread(threading.Thread):
         while(True):
             if self.stopped():
                 return
-            for i in ROUTER_INTERFACES:
-                p = scapy_ospf.Ether(src = ROUTER_CP_INTERFACE.get("mac"), dst = i.get("mac"))/IP(src = i.get("address"), dst = i.get("neighbour_ip"))/scapy_ospf.OSPF_Hdr(src=ROUTER_ID,area=AREA_ID)/scapy_ospf.OSPF_Hello()
-                p.show()
-                sendp(p, iface=i.get("name"))
+            self.generate_hello()
             time.sleep(HELLOINT)
     def stop(self):
         self._stop_event.set()
     def stopped(self):
         return self._stop_event.is_set()
+    def generate_hello(self):
+        for i in ROUTER_INTERFACES:
+            p = scapy_ospf.Ether(src = ROUTER_CP_INTERFACE.get("mac"), dst = i.get("mac"))/IP(src = i.get("address"), dst = i.get("neighbour_ip"))/scapy_ospf.OSPF_Hdr(src=ROUTER_ID,area=AREA_ID)/scapy_ospf.OSPF_Hello()
+            p.show()
+            sendp(p, iface=i.get("name"))
 
-def generate_hello():
-    for i in ROUTER_INTERFACES:
-        p = scapy_ospf.Ether(src = ROUTER_CP_INTERFACE.get("mac"), dst = i.get("mac"))/IP(src = i.get("address"), dst = i.get("neighbour_ip"))/scapy_ospf.OSPF_Hdr(src=ROUTER_ID,area=AREA_ID)/scapy_ospf.OSPF_Hello()
-        p.show()
-        sendp(p, iface=i.get("name"))
+class OspfSnifferThread(threading.Thread):
+    def __init__(self,*args, **kwargs):
+        super(OspfSnifferThread, self).__init__(*args, **kwargs)
+        self._stop_event = threading.Event()
+    def run(self):
+        t = AsyncSniffer(iface=ROUTER_CP_INTERFACE.get("name"), prn=self.process_packet)
+        t.start()
+        while(True):
+            if self.stopped():
+                t.stop()
+                return
+            time.sleep(0.5)
+    def stop(self):
+        self._stop_event.set()
+    def stopped(self):
+        return self._stop_event.is_set()
+    def process_packet(self, packet):
+        packet.show()
 
 def generate_lsu(    
     eth_src = ROUTER_CP_INTERFACE.get("mac"), 
@@ -77,31 +86,39 @@ def validate_packet(packet):
         is_packet_valid = False
     return is_packet_valid
 
+def generate_OSPF_Interfaces():
+    OSPF_Interfaces = []
+    for interface in ROUTER_INTERFACES:
+        OSPF_Interfaces.append(OspfInterface(
+            ip_address = interface["address"],
+            mask = interface["mask"],
+            helloint = HELLOINT))
+        print("{} OSPF Interface = {} generated!".format(time.strftime('%H:%M:%S'), interface["name"]))
+    return OSPF_Interfaces
+
+
 ###---------------------------------###
 ### ----------- RUNNING ----------- ###
 ###---------------------------------###
 
 def main():
 #Create OSPF Interfaces for every sX-ethX
-    OSPF_Interfaces = []
-
-    for interface in ROUTER_INTERFACES:
-        OSPF_Interfaces.append(OspfInterface(
-            ip_address = interface["address"],
-            mask = interface["mask"],
-            helloint = HELLOINT))
+    OSPF_Interfaces = generate_OSPF_Interfaces()
     
-    #t = AsyncSniffer(iface = ROUTER_CP_INTERFACE.get("name"))
-    #t.start()
-
     OspfHello = OspfHelloThread()
     OspfHello.start()
-    print("OSPF_Hello_Thread started!")
+    print("{} OSPF_Hello_Thread started!".format(time.strftime('%H:%M:%S')))
+    #OspfSniffer = OspfSnifferThread()
+    #OspfSniffer.start()
+    #print("{} OSPF_Sniffer_Thread started!".format(time.strftime('%H:%M:%S')))
+
+    time.sleep(25)
+
     OspfHello.stop()
     OspfHello.join()
+    #OspfSniffer.stop()
+    #OspfSniffer.join()
     
-
-
 if __name__ == "__main__":
     main()
 
