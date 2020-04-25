@@ -73,8 +73,8 @@ class RouterClass:
             print("{}: OSPF Interface = {} generated!".format(time.strftime('%H:%M:%S'), interface["name"]))
 
 class DatabaseClass(list):
-    def insert(self, hello):
-        log("Database insert called")
+    def insert(self, hello):    #add router or update that it is alive
+        log("Database insert hello called")
         if not self.search_with_router_id(hello):
             self.append(hello)
             log("Hello/Router appended to Database")
@@ -82,6 +82,12 @@ class DatabaseClass(list):
             x = self.get_index_with_router_id(hello)
             self[x]["tictoc"] = hello["tictoc"]
             log("TicToc updated")
+    def insert_lsa(self, lsa):
+        log("Database insert lsa called")
+        if self.search_with_router_id(lsa) is True:
+            x = self.get_index_with_router_id(lsa)
+            self[x]["lsa"].append(lsa)   #TODO
+            log("Database updated with lsa -> {}".format(self[x]))
     def remove(self, hello):
         index_to_remove = self.index(hello)
         self.pop(index_to_remove)
@@ -150,7 +156,7 @@ class OspfLSUThread(threading.Thread):
                             temp_mask = "255.255.255.0"
                         else:
                             temp_mask = mask
-                        p[scapy_ospf.OSPF_LSUpd].lsalist.append(scapy_ospf.OSPF_Network_LSA(id=k.subnet,adrouter=self.router.router_id, mask = k.mask))
+                        p[scapy_ospf.OSPF_LSUpd].lsalist.append(scapy_ospf.OSPF_Network_LSA(id=k.subnet,adrouter=self.router.router_id, mask = temp_mask))
                         log("LSA Appended")
                 p.show()
                 sendp(p, iface=i.name)
@@ -184,19 +190,15 @@ class OspfSnifferThread(threading.Thread):
                 log("Handling hello packet")
                 msg_hello_int = packet[scapy_ospf.OSPF_Hello].hellointerval
                 mgs_deadinterval = packet[scapy_ospf.OSPF_Hello].deadinterval
-                msg = {"router_id" : msg_router_id, "hello_int" : msg_hello_int, "tictoc":int(mgs_deadinterval)}
+                msg = {"router_id" : msg_router_id, "hello_int" : msg_hello_int, "tictoc":int(mgs_deadinterval), "lsa":[]}
                 self.Database_Topo.insert(msg)
                 print(msg)
             elif msg_type == 4:                     #from scapy_ospf
                 log("Handling LSU packet")
                 for lsa in packet[scapy_ospf.OSPF_LSUpd].lsalist:
-                    msg_id = lsa.id
-                    msg_adrouter = lsa.adrouter
-                    msg_mask = lsa.mask
-                    log("link_id = {}    adrouter = {}   mask = {}".format(msg_id, msg_adrouter, msg_mask))
-                    #TODO wiadomosc sparsowana - wrzuc ja teraz do bazy
-            
-        #packets.append(packet)
+                    msg = {"router_id" : lsa.adrouter, "link_id" : lsa.id, "mask" : lsa.mask}
+                    log("LSA = {}".format(msg))
+                    self.Database_Topo.insert_lsa(msg)
     def validate_packet(self, packet):
         is_packet_valid = True
         if( packet[scapy_ospf.OSPF_Hdr].version == OSPF_VERSION and packet[scapy_ospf.OSPF_Hdr].area == AREA_ID and packet[scapy_ospf.OSPF_Hdr].authtype == AUTH_TYPE):
