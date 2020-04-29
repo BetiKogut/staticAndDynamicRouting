@@ -126,7 +126,7 @@ def main():
     s1.setMAC('00:00:00:00:01:02', intf='s1-eth2')
     #in/out ospf packets interface
     s1.setIP('192.168.101.2/24', intf = 's1-eth4')
-    s1.setMAC('00:00:00:00:01:4', intf = 's1-eth4')
+    s1.setMAC('00:00:00:00:01:04', intf = 's1-eth4')
 
 #switch 2 configuration
     s2.setIP('192.168.2.1/24', intf = 's2-eth0')
@@ -139,7 +139,7 @@ def main():
     s2.setMAC('00:00:00:00:02:03', intf='s2-eth3')
     #in/out ospf packets interface
     s2.setIP('192.168.102.2/24', intf = 's2-eth4')
-    s2.setMAC('00:00:00:00:02:4', intf = 's2-eth4')
+    s2.setMAC('00:00:00:00:02:04', intf = 's2-eth4')
 
 #switch 3 configuration
     s3.setIP('192.168.12.2/24', intf='s3-eth0')
@@ -150,7 +150,7 @@ def main():
     s3.setMAC('00:00:00:00:03:02', intf='s3-eth2')
     #in/out ospf packets interface
     s3.setIP('192.168.103.2/24', intf = 's3-eth4')
-    s3.setMAC('00:00:00:00:03:4', intf = 's3-eth4') 
+    s3.setMAC('00:00:00:00:03:04', intf = 's3-eth4') 
 
 #switch 4 configuration
     s4.setIP('192.168.13.1/24', intf='s4-eth0')
@@ -161,7 +161,7 @@ def main():
     s4.setMAC('00:00:00:00:04:02', intf='s4-eth2')
     #in/out ospf packets interface
     s4.setIP('192.168.104.2/24', intf = 's4-eth4')
-    s4.setMAC('00:00:00:00:04:4', intf = 's4-eth4')
+    s4.setMAC('00:00:00:00:04:04', intf = 's4-eth4')
 
 #switch 5 configuration
     s5.setIP('192.168.5.1/24', intf='s5-eth0')
@@ -174,7 +174,7 @@ def main():
     s5.setMAC('00:00:00:00:05:03', intf='s5-eth3')
     #in/out ospf packets interface
     s5.setIP('192.168.105.2/24', intf = 's5-eth4')
-    s5.setMAC('00:00:00:00:05:4', intf = 's5-eth4')
+    s5.setMAC('00:00:00:00:05:04', intf = 's5-eth4')
 
 #hosts default r
     h1 = net.get('h1')
