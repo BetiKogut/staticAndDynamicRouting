@@ -14,11 +14,10 @@ LSUINT = 30
 HELLOINT = 10
 NEIGHBOR_TIMEOUT = 3*HELLOINT
 ROUTER_INTERFACES =[
-    { "name": "s2-eth0",    "address":"192.168.2.1",     "mask":"24",   "subnet":"192.168.2.0",   "mac":"00:00:00:00:02:00",  "neighbor_ip":"192.168.2.2",  "neighbor_mac":"00:00:00:00:00:02"},
-    { "name": "s2-eth1",    "address":"192.168.11.2",    "mask":"24",   "subnet":"192.168.11.0",   "mac":"00:00:00:00:02:01",  "neighbor_ip":"192.168.11.1", "neighbor_mac":"00:00:00:00:01:01"},
-    { "name": "s2-eth2",    "address":"192.168.13.2",    "mask":"24",   "subnet":"192.168.13.0",   "mac":"00:00:00:00:02:02",  "neighbor_ip":"192.168.13.1", "neighbor_mac":"00:00:00:00:04:00"},
-    { "name": "s2-eth3",    "address":"192.168.14.1",    "mask":"24",   "subnet":"192.168.14.0",   "mac":"00:00:00:00:02:03",  "neighbor_ip":"192.168.14.2", "neighbor_mac":"00:00:00:00:05:01"}]
-ROUTER_CP_INTERFACE = {"name": "s2-eth4",    "address":"192.168.102.2",     "mask":"24",   "mac":"00:00:00:00:02:04"}
+    { "name": "s3-eth0",    "address":"192.168.12.2",     "mask":"24",   "subnet":"192.168.12.0",   "mac":"00:00:00:00:03:00",  "neighbor_ip":"192.168.12.1"},
+    { "name": "s3-eth1",    "address":"192.168.15.1",    "mask":"24",   "subnet":"192.168.15.0",   "mac":"00:00:00:00:03:01",  "neighbor_ip":"192.168.15.1"},
+    { "name": "s3-eth2",    "address":"192.168.16.1",    "mask":"24",   "subnet":"192.168.16.0",   "mac":"00:00:00:00:03:02",  "neighbor_ip":"192.168.16.1"}]
+ROUTER_CP_INTERFACE = {"name": "s3-eth4",    "address":"192.168.103.2",     "mask":"24",   "mac":"00:00:00:00:03:04"}
 ROUTER_ID = ROUTER_INTERFACES[0].get("address")
 ALLSPFRouters = "224.0.0.5"
 AUTH_TYPE = "0"
@@ -43,7 +42,7 @@ class TimerThread(Thread):
                 else: 
                     router["tictoc"]-=1     #tictocking timer
                     log("Timer tictoc'ing - {}".format(router["tictoc"]))
-
+                    
 class OspfInterface:
     def __init__(self, name, ip_address, mac, subnet, mask = "24", helloint = HELLOINT, neighbor_ip = "0", neighbor_id = "0"):
         self.name = name
@@ -60,8 +59,6 @@ class RouterClass:
     area_id = AREA_ID
     lsuint = LSUINT
     ospf_interfaces = []
-    #routing_table = []
-    # def __init__(self, router_interfaces, database):
     def __init__(self, router_interfaces):
         for interface in router_interfaces:
             self.ospf_interfaces.append(OspfInterface(
@@ -74,15 +71,6 @@ class RouterClass:
                 neighbor_ip = "0",
                 neighbor_id = "0"))
             print("{}: OSPF Interface = {} generated".format(time.strftime('%H:%M:%S'), interface["name"]))
-    #     self.database = database
-    # def update_routing_table(self):
-    #     log("Updating routing table")
-    #     del self.routing_table[:]
-    #     paths = self.database.get_shortest_path(self.router_id)
-    #     log("Paths = {}".format(paths))
-    #     if not paths:
-    #         return
-    #     networks = {} #TODO
 
 class DatabaseClass(list):
     def insert(self, hello):    #add router or update that it is alive
@@ -118,38 +106,6 @@ class DatabaseClass(list):
                 return ind
         log("Router not found")
         return False
-    # def get_shortest_path(self, router_id):
-    #     log("Database.get_shortest_path()   called")
-    #     g = dijkstra.Graph()
-    #     nodes = []
-    #     paths = {}
-    #     for router in self:
-    #         nodes.append(router["router_id"])
-    #         log("Database.get_shortest_path()   nodes = {}".format(nodes))
-    #         for network in router["lsa"]:
-    #             neighbor_id = network["router_id"]
-    #             cost = 1    #TODO cost is hardcoded for 1 now.
-    #             g.add_e(router["router_id"], neighbor_id, cost)
-    #             log("Database.get_shortest_path()   adding to graph -> neighbor_id = {} ".format(g))
-
-    #     log("Database.get_shortest_path()   graph = {}".format(g))
-    #     if router_id in nodes:
-    #         nodes.remove(router_id)
-    #     dist, prev = g.s_path(router_id)
-    #     for dest in nodes:
-    #         path = []
-    #         current = dest
-    #         while current in prev:
-    #             path.insert(0, prev[current])
-    #             current = prev[current]
-    #         try:
-    #             cost = dist[dest]
-    #         except KeyError:
-    #             continue
-    #         else:
-    #             next_hop = (path[1] if len(path) > 1 else dest)
-    #             paths[dest] = (next_hop, cost)
-    #     return paths
 
 class OspfHelloThread(threading.Thread):
     def __init__(self, router, *args, **kwargs):
@@ -173,7 +129,7 @@ class OspfHelloThread(threading.Thread):
             #p.show()
             sendp(p, iface=i.name)
             log("Hello sent")
-
+            
 class OspfLSUThread(threading.Thread):
     def __init__(self, router, *args, **kwargs):
             super(OspfLSUThread, self).__init__(*args, **kwargs)
@@ -206,7 +162,7 @@ class OspfLSUThread(threading.Thread):
                 sendp(p, iface=i.name)
                 log("LSU sent")
 
-class OspfSnifferThread(threading.Thread):  
+class OspfSnifferThread(threading.Thread):
     def __init__(self, Database, Router, *args, **kwargs):
         super(OspfSnifferThread, self).__init__(*args, **kwargs)
         self._stop_event = threading.Event()
@@ -243,7 +199,6 @@ class OspfSnifferThread(threading.Thread):
                     msg = {"router_id" : lsa.adrouter, "link_id" : lsa.id, "mask" : lsa.mask}
                     log("LSA = {}".format(msg))
                     self.Database_Topo.insert_lsa(msg)
-                # self.Router_Inst.update_routing_table()
     def validate_packet(self, packet):
         is_packet_valid = True
         if( packet[scapy_ospf.OSPF_Hdr].version == OSPF_VERSION and packet[scapy_ospf.OSPF_Hdr].area == AREA_ID and packet[scapy_ospf.OSPF_Hdr].authtype == AUTH_TYPE):
@@ -285,7 +240,7 @@ def main():
     OspfSniffer.stop()
     OspfSniffer.join()
     stopFlag.set()          #stopTicToc-Timer
-
+    
     log("---THE END---")
 if __name__ == "__main__":
     main()

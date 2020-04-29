@@ -70,7 +70,7 @@ class RouterClass:
                 helloint = HELLOINT,
                 neighbor_ip = "0",
                 neighbor_id = "0"))
-            print("{}: OSPF Interface = {} generated!".format(time.strftime('%H:%M:%S'), interface["name"]))
+            print("{}: OSPF Interface = {} generated".format(time.strftime('%H:%M:%S'), interface["name"]))
 
 class DatabaseClass(list):
     def insert(self, hello):    #add router or update that it is alive
@@ -94,17 +94,17 @@ class DatabaseClass(list):
     def search_with_router_id(self, hello):
         for router in self:
             if router["router_id"] == hello["router_id"]:
-                log("I found him!")
+                log("Router found")
                 return True
         log("Nope")
         return False
     def get_index_with_router_id(self,hello):
         for router in self:
             if router["router_id"] == hello["router_id"]:
-                log("I found him!")
+                log("Router found")
                 ind = self.index(router)
                 return ind
-        log("Nope")
+        log("Router not found")
         return False
 
 class OspfHelloThread(threading.Thread):
@@ -126,7 +126,7 @@ class OspfHelloThread(threading.Thread):
         for i in self.router.ospf_interfaces:
             p = scapy_ospf.Ether(src = ROUTER_CP_INTERFACE.get("mac"), dst = i.mac)/IP(src = i.ip_address, dst = i.neighbor_ip)/scapy_ospf.OSPF_Hdr(src=ROUTER_ID,area=AREA_ID)/scapy_ospf.OSPF_Hello(hellointerval=HELLOINT, deadinterval=NEIGHBOR_TIMEOUT)
             log("Hello generated")
-            p.show()
+            #p.show()
             sendp(p, iface=i.name)
             log("Hello sent")
             
@@ -163,10 +163,11 @@ class OspfLSUThread(threading.Thread):
                 log("LSU sent")
 
 class OspfSnifferThread(threading.Thread):
-    def __init__(self, Database, *args, **kwargs):
+    def __init__(self, Database, Router, *args, **kwargs):
         super(OspfSnifferThread, self).__init__(*args, **kwargs)
         self._stop_event = threading.Event()
         self.Database_Topo = Database
+        self.Router_Inst = Router
     def run(self):
         t = AsyncSniffer(iface=ROUTER_CP_INTERFACE.get("name"), prn=self.process_packet)
         t.start()
@@ -192,7 +193,6 @@ class OspfSnifferThread(threading.Thread):
                 mgs_deadinterval = packet[scapy_ospf.OSPF_Hello].deadinterval
                 msg = {"router_id" : msg_router_id, "hello_int" : msg_hello_int, "tictoc":int(mgs_deadinterval), "lsa":[]}
                 self.Database_Topo.insert(msg)
-                print(msg)
             elif msg_type == 4:                     #from scapy_ospf
                 log("Handling LSU packet")
                 for lsa in packet[scapy_ospf.OSPF_LSUpd].lsalist:
@@ -203,25 +203,33 @@ class OspfSnifferThread(threading.Thread):
         is_packet_valid = True
         if( packet[scapy_ospf.OSPF_Hdr].version == OSPF_VERSION and packet[scapy_ospf.OSPF_Hdr].area == AREA_ID and packet[scapy_ospf.OSPF_Hdr].authtype == AUTH_TYPE):
             is_packet_valid = False
-        return is_packet_valid
+        # return is_packet_valid
+        return True
 
 ###---------------------------------###
 ### ----------- RUNNING ----------- ###
 ###---------------------------------###
 
 def main():
-    Router = RouterClass(ROUTER_INTERFACES)
     Database_Topo = DatabaseClass()
+    Router = RouterClass(ROUTER_INTERFACES)
     
     OspfHello = OspfHelloThread(Router)
     OspfLSU = OspfLSUThread(Router)
+    
     OspfHello.start()
-    print("{} OSPF_Hello_Thread started!".format(time.strftime('%H:%M:%S')))
+    log("OSPF_Hello_Thread started")
     OspfLSU.start()
-    print("{} OSPF_LSU_Thread started!".format(time.strftime('%H:%M:%S')))
-    #OspfSniffer = OspfSnifferThread()
-    #OspfSniffer.start()
-    #log("OSPF_Sniffer_Thread started!")
+    log("OSPF_LSU_Thread started")
+
+    stopFlag = Event()
+    tictoc = TimerThread(stopFlag, Database_Topo )
+    tictoc.start()
+    log("Timer_Thread started")
+
+    OspfSniffer = OspfSnifferThread(Database = Database_Topo, Router=Router)
+    OspfSniffer.start()
+    log("OSPF_Sniffer_Thread started")
 
     time.sleep(25)
 
@@ -229,9 +237,11 @@ def main():
     OspfHello.join()
     OspfLSU.stop()
     OspfLSU.join()
-    #OspfSniffer.stop()
-    #OspfSniffer.join()
+    OspfSniffer.stop()
+    OspfSniffer.join()
+    stopFlag.set()          #stopTicToc-Timer
     
+    log("---THE END---")
 if __name__ == "__main__":
     main()
 
