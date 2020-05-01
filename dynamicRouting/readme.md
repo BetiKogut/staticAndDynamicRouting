@@ -1,5 +1,7 @@
 # Routing dynamiczny - opis rozwiązania
 
+[TOC]
+
 ## Wstęp
 
 Rozwiązanie zakłada implementację prostego Routera IP działającego na przełączniku [*BMV2*](https://github.com/p4lang/behavioral-model). Warstwa przekazu danych jest warstwą programowalną, implementowaną z użyciem języka P4_16.  Należy zapewnić działanie protokołu [*Pee-Wee OSPF*](https://www.cl.cam.ac.uk/teaching/1011/P33/documentation/pwospf/), który jest uproszczoną implementacją protokołu OSPF oraz odpowiednią integrację warstwy danych z warstwą sterowania. 
@@ -15,7 +17,6 @@ Warstwa przekazu danych bazuje na kodzie zaimplementowanym w części routingu s
 Wiadomości OSPF są rozpoznawane na podstawie pola ``protocol`` w nagłówku ``ipv4``.
 
 ```c
-
 const bit<8> TYPE_OSPF = 0x59;
 
 ```
@@ -78,24 +79,57 @@ action mark_packet_cp(){
     }
 ```
 
-## Integracja warstwy sterowania z warstwą przekazu danych
+### Integracja warstwy sterowania z warstwą przekazu danych
 
 Tak jak wspomniano wcześniej, pakiety OSPF powinny być przekazane do obsługi przez warstwę sterowania. W tym celu został wydzielony specjalny port na switch'u służący do komunikacji pomiędzy warstwami CP i DP. Po przekierowaniu pakietu na port 4 przez warstwę przekazu danych jest on przechwytywany przez warstwę sterowania z użyciem pakietu `Scapy`. 
 
 ## Warstwa sterowania
 
-Każdy z uruchamianych obiektów typu Switch posiada swój dedykowany obiekt Controller, który został wykorzystany jako środowisko uruchomieniowe dla procesów warstwy sterowania. Uruchamiane na nim oprogramowanie zostało napisane w języku Python. Do przechwytywania pakietów ze portu 4 Switcha oraz do generowania i wysyłania nowych pakietów *Pee-Wee OSPF* został wykorzystany pakiet `Scapy`. Zadaniem warstwy sterowania jest zapewnienie działania protokołu *Pee-Wee OSPF* w testowanej sieci i uruchamianie agenta. 
+Każdy z uruchamianych obiektów typu Switch posiada swój dedykowany obiekt typu Controller, który został wykorzystany jako środowisko uruchomieniowe dla procesów warstwy sterowania. Uruchamiane na nim oprogramowanie zostało napisane w języku Python. 
 
-Procesy wykonywane przez program warstwy sterowania można zawrzeć w następujących punktach:
+### Protokół routingu dynamicznego
 
-1. Przechwytywanie i parsowanie pakietów z portu 4  - *[Scapy, OspfSnifferThread]*.
-2. Sprawdzanie typu pakietu - OSPF Hello lub LSU - *[OspfSnifferThread].*
-3. Przechowywanie oraz aktualizacja danych otrzymywanych od innych Routerów, budowa bazy danych - [*OspfSnifferThread, DatabaseClass*].
-4. Obserwacja, czy dany Router przesyła cykliczne wiadomości *Hello* oraz wykreślanie go z tablicy, jeśli należy uznać go za martwy - [*TimerThread*, *DatabaseClass*].
-5. Wysyłanie cyklicznych pakietów *Hello* - [*OspfHelloThread*].
-6. Wysyłanie cyklicznych wiadomości *LSU* - *[OspfLSUThread]* 
+Głównym celem działania programu warstwy sterowania jest zapewnienie działania protokołu routingu pakietów IP w testowanej sieci. Protokołem tym jest *Pee-Wee OSPF*, który jest uproszczoną wersją protokołu *OSPF v2*.  Zakłada on przesyłanie jedynie wiadomości typu *Hello*[1] oraz *Link State Updates*[4].
 
-### Warstwa sterowania - #ToDo
+### Obsługa pakietów
+
+Do obsługi pakietów wykorzystany został pakiet [*Scapy*](https://scapy.readthedocs.io/en/latest/). Pozwala on na uruchomienie asynchronicznego Sniffera na porcie 4 oraz wywołanie dla każdego przechwyconego pakietu specjalnie utworzonej metody w klasie `OspfSnifferThread` - `process_packet`. Zadaniem tej metody jest sprawdzenie zgodności obsługiwanego pakietu z wymaganiami protokołu *PW-OSPF*, rozpoznanie typu pakietu (*Hello* lub *LSU*) oraz wywołanie operacji na bazie danych.  Przykład tworzenia takiego Sniffera przedstawia się następująco:
+
+```python
+t = AsyncSniffer(iface=ROUTER_CP_INTERFACE.get("name"), prn=self.process_packet)
+t.start()
+```
+
+Pakiet *Scapy* wraz z jego rozszerzeniem dla protokołu OSPF (zgodnym z RFC 2328) został również wykorzystany do generowania pakietów OSPF wysyłanych później do sąsiednich routerów. Generowanie takiego pakietu polega na utworzeniu kolejnych warstw i ich protokołów: MAC, IP, OSPF. Przykład tworzenia takiego pakietu jest widoczny poniżej:
+
+```Python
+p = scapy_ospf.Ether(src = ROUTER_CP_INTERFACE.get("mac"), dst = i.mac)/
+	IP(src = i.ip_address, dst = i.neighbor_ip)/
+	scapy_ospf.OSPF_Hdr(src=ROUTER_ID,area=AREA_ID)/
+	scapy_ospf.OSPF_Hello(hellointerval=HELLOINT, deadinterval=NEIGHBOR_TIMEOUT)
+```
+
+Za tworzenie i regularne wysyłanie pakietów *Hello* oraz *LSU* odpowiedzialne są odpowiednio klasy `OspfHelloThread` oraz `OspfLSUThread`. Ponieważ rozszerzenia Scapy dla OSPF przewidują znacznie bardziej rozbudowane wiadomości niż w *Pee-Wee OSPF*, to wykorzystane zostały tylko niektóre z udostępnianych przez API pól. Pozostałe pola są przesyłane z domyślnie generowanymi wartościami, a po stronie odbiorczej parsowane są tylko te, które są właściwe dla *PW-OSPF*. 
+
+### Baza danych
+
+Baza danych, czyli `DatabaseClass` dziedziczy po obiekcie typu lista. Wewnątrz listy przechowywane są słowniki. Każdy słownik odpowiada Routerowi, od którego otrzymano wiadomość *Hello*. Oprócz tego, wewnątrz list, pod kluczem `"lsu"`przechowywany jest słownik definiujący łącza, które rozgłosił dany router, wraz z ID routera, od którego do rozgłoszenie pochodzi. 
+
+Jeśli przychodząca wiadomość *Hello* pochodzi od Routera, który znajduje się już w bazie, to aktualizowany jest dla niego znacznik czasowy, oznaczający, że dany Router można uznawać za "działający". 
+
+### Wątki
+
+Wspomiane do tej pory klasy `OspfHelloThread` oraz `OspfLsuThread` dziedziczą po klasie `Thread`. Tak samo jest z klasą `TimerThread` służącą do monitorowania czasu od ostatniej wiadomości *Hello*, która, jeśli Router nie ponawia swojego statusu przez okres zdefiniowany jako `NEIGHBOR_TIMEOUT`, wykreśla go z bazy danych. 
+
+Wymienione wątki są tworzone i uruchamiane na początku działania programu. 
+
+###  Struktura programu
+
+Kompletne oprogramowanie składa się z 5 plików `ospf_agentX.py`, które powinny być uruchomione na każdym z Controller'ów. Na początku każdego skryptu zdefiniowane są dane konfiguracyjne - takie same, jak w pliku `topology.py`, służącym do skonfigurowania i uruchomienia sieci w programie Mininet. 
+
+W funkcji `main`, pomiędzy poleceniami tworzącymi i determinującymi kolejne obiekty, znajduje się polecenie `time.sleep()`. Od wartości przekazanej w funkcji `sleep` zależy czas przez który program będzie uruchomiony. 
+
+### Warstwa sterowania #ToDo
 
 Na podstawie tworzonej bazy danych program powinien utworzyć graf sieci i wykorzystując algorytm Dijkstry wyznaczyć najkrótsze ścieżki. Następnie powinien wygenerować na tej podstawie wpisy do tablic routingu, które należy wykonać z wykorzystaniem linii komend *Simple_Switch_CLI*. 
 

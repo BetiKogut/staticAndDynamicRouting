@@ -200,11 +200,12 @@ class OspfSnifferThread(threading.Thread):
                     log("LSA = {}".format(msg))
                     self.Database_Topo.insert_lsa(msg)
     def validate_packet(self, packet):
+        return True
         is_packet_valid = True
         if( packet[scapy_ospf.OSPF_Hdr].version == OSPF_VERSION and packet[scapy_ospf.OSPF_Hdr].area == AREA_ID and packet[scapy_ospf.OSPF_Hdr].authtype == AUTH_TYPE):
             is_packet_valid = False
         # return is_packet_valid
-        return True
+        #return True
 
 ###---------------------------------###
 ### ----------- RUNNING ----------- ###
