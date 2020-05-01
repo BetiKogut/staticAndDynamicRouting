@@ -10,7 +10,7 @@ import dijkstra
 ###---------------------------------###
 OSPF_VERSION = "2"
 AREA_ID = "0.0.0.0"
-LSUINT = 30
+LSUINT = 15
 HELLOINT = 10
 NEIGHBOR_TIMEOUT = 3*HELLOINT
 ROUTER_INTERFACES =[
@@ -44,7 +44,7 @@ class TimerThread(Thread):
                     log("Timer tictoc'ing - {}".format(router["tictoc"]))
                     
 class OspfInterface:
-    def __init__(self, name, ip_address, mac, subnet, mask = "24", helloint = HELLOINT, neighbor_ip = "0", neighbor_id = "0"):
+    def __init__(self, name, ip_address, mac, subnet, neighbor_ip, mask = "24", helloint = HELLOINT,  neighbor_id="0"):
         self.name = name
         self.ip_address = ip_address
         self.mac = mac
@@ -68,7 +68,7 @@ class RouterClass:
                 mask = interface["mask"],
                 subnet = interface["subnet"],
                 helloint = HELLOINT,
-                neighbor_ip = "0",
+                neighbor_ip = interface["neighbor_ip"],
                 neighbor_id = "0"))
             print("{}: OSPF Interface = {} generated".format(time.strftime('%H:%M:%S'), interface["name"]))
 
@@ -82,18 +82,26 @@ class DatabaseClass(list):
             x = self.get_index_with_router_id(hello)
             self[x]["tictoc"] = hello["tictoc"]
             log("TicToc updated")
-    def insert_lsa(self, lsa):
+    def insert_lsa(self, lsa, router_id):
         log("Database insert lsa called")
-        if self.search_with_router_id(lsa) is True:
-            x = self.get_index_with_router_id(lsa)
-            self[x]["lsa"].append(lsa)   #TODO
-            log("Database updated with lsa -> {}".format(self[x]))
+        if self.search_with_router_id_lsu(router_id) is True:
+            x = self.get_index_with_router_id_lsu(router_id)
+            if self.search_lsa(x,lsa):
+                self[x]["lsa"].append(lsa)   #TODO
+                log("Database updated with lsa -> {}".format(self[x]))
     def remove(self, hello):
         index_to_remove = self.index(hello)
         self.pop(index_to_remove)
     def search_with_router_id(self, hello):
         for router in self:
             if router["router_id"] == hello["router_id"]:
+                log("Router found")
+                return True
+        log("Nope")
+        return False
+    def search_with_router_id_lsu(self, router_id):
+        for router in self:
+            if router["router_id"] == router_id:
                 log("Router found")
                 return True
         log("Nope")
@@ -106,6 +114,21 @@ class DatabaseClass(list):
                 return ind
         log("Router not found")
         return False
+    def get_index_with_router_id_lsu(self,router_id):
+        for router in self:
+            if router["router_id"] == router_id:
+                log("Router found")
+                ind = self.index(router)
+                return ind
+        log("Router not found")
+        return False
+    def search_lsa(self, x, lsa):
+        for lsa_in_db in self[x]["lsa"]:
+            if lsa_in_db == lsa:
+                log("LSA ALREADY IN LIST")
+                return False
+        log("LSA NOT IN LIST")
+        return True 
 
 class OspfHelloThread(threading.Thread):
     def __init__(self, router, *args, **kwargs):
@@ -124,6 +147,8 @@ class OspfHelloThread(threading.Thread):
         return self._stop_event.is_set()
     def generate_hello(self): #TODO
         for i in self.router.ospf_interfaces:
+            log("Interface = {}".format(i))
+            log("Generating Hello with ip dest = {}".format(i.neighbor_ip))
             p = scapy_ospf.Ether(src = ROUTER_CP_INTERFACE.get("mac"), dst = i.mac)/IP(src = i.ip_address, dst = i.neighbor_ip)/scapy_ospf.OSPF_Hdr(src=ROUTER_ID,area=AREA_ID)/scapy_ospf.OSPF_Hello(hellointerval=HELLOINT, deadinterval=NEIGHBOR_TIMEOUT)
             log("Hello generated")
             p.show()
@@ -131,10 +156,11 @@ class OspfHelloThread(threading.Thread):
             log("Hello sent")
             
 class OspfLSUThread(threading.Thread):
-    def __init__(self, router, *args, **kwargs):
+    def __init__(self, router, database, *args, **kwargs):
             super(OspfLSUThread, self).__init__(*args, **kwargs)
             self._stop_event = threading.Event()
             self.router = router
+            self.database = database
     def run(self):
         time.sleep(3)
         while(True):
@@ -157,6 +183,14 @@ class OspfLSUThread(threading.Thread):
                         else:
                             temp_mask = mask
                         p[scapy_ospf.OSPF_LSUpd].lsalist.append(scapy_ospf.OSPF_Network_LSA(id=k.subnet,adrouter=self.router.router_id, mask = temp_mask))
+                        log("LSA Appended")
+                for router in self.database:
+                    for lsa in router["lsa"]:
+                        if lsa["mask"] == "24":
+                            temp_mask = "255.255.255.0"
+                        else:
+                            temp_mask = lsa["mask"]
+                        p[scapy_ospf.OSPF_LSUpd].lsalist.append(scapy_ospf.OSPF_Network_LSA(id=lsa["link_id"],adrouter=lsa["router_id"], mask = temp_mask))
                         log("LSA Appended")
                 p.show()
                 sendp(p, iface=i.name)
@@ -192,14 +226,17 @@ class OspfSnifferThread(threading.Thread):
                 msg_hello_int = packet[scapy_ospf.OSPF_Hello].hellointerval
                 mgs_deadinterval = packet[scapy_ospf.OSPF_Hello].deadinterval
                 msg = {"router_id" : msg_router_id, "hello_int" : msg_hello_int, "tictoc":int(mgs_deadinterval), "lsa":[]}
-                self.Database_Topo.insert(msg)
+                if msg_router_id != ROUTER_ID:
+                    self.Database_Topo.insert(msg)
             elif msg_type == 4:                     #from scapy_ospf
                 log("Handling LSU packet")
                 for lsa in packet[scapy_ospf.OSPF_LSUpd].lsalist:
                     msg = {"router_id" : lsa.adrouter, "link_id" : lsa.id, "mask" : lsa.mask}
                     log("LSA = {}".format(msg))
-                    self.Database_Topo.insert_lsa(msg)
+                    if msg_router_id != ROUTER_ID:
+                        self.Database_Topo.insert_lsa(msg, msg_router_id)
     def validate_packet(self, packet):
+        return True
         is_packet_valid = True
         if( packet[scapy_ospf.OSPF_Hdr].version == OSPF_VERSION and packet[scapy_ospf.OSPF_Hdr].area == AREA_ID and packet[scapy_ospf.OSPF_Hdr].authtype == AUTH_TYPE):
             is_packet_valid = False
@@ -215,7 +252,7 @@ def main():
     Router = RouterClass(ROUTER_INTERFACES)
     
     OspfHello = OspfHelloThread(Router)
-    OspfLSU = OspfLSUThread(Router)
+    OspfLSU = OspfLSUThread(Router, Database_Topo)
     
     OspfHello.start()
     log("OSPF_Hello_Thread started")
@@ -232,6 +269,7 @@ def main():
     log("OSPF_Sniffer_Thread started")
 
     time.sleep(25)
+    #time.sleep(8)
 
     OspfHello.stop()
     OspfHello.join()
@@ -244,7 +282,3 @@ def main():
     log("---THE END---")
 if __name__ == "__main__":
     main()
-
-
-
-
