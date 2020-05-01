@@ -126,7 +126,7 @@ class OspfHelloThread(threading.Thread):
         for i in self.router.ospf_interfaces:
             p = scapy_ospf.Ether(src = ROUTER_CP_INTERFACE.get("mac"), dst = i.mac)/IP(src = i.ip_address, dst = i.neighbor_ip)/scapy_ospf.OSPF_Hdr(src=ROUTER_ID,area=AREA_ID)/scapy_ospf.OSPF_Hello(hellointerval=HELLOINT, deadinterval=NEIGHBOR_TIMEOUT)
             log("Hello generated")
-            #p.show()
+            p.show()
             sendp(p, iface=i.name)
             log("Hello sent")
             
